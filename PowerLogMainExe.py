@@ -40,7 +40,7 @@ content = ''
 # 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7
 # 3: Cross-Section: calculate 2.5D shear with modified m index from OpenFOAM 3D simulation
 # others: error
-Foption = 2
+Foption = 1
 if Foption == 1:
     content = 'Function Code 1: Surface Feild: calculate 2.5D shear for each SRH2D cell\n'
     Log.Log(logPath,content)
