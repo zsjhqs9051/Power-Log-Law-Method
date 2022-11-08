@@ -41,17 +41,23 @@ def Info2DLoad(FileName,Foption):
     Info2DFIle = '2D-Info/'+FileName
     df = pd.read_csv(Info2DFIle)
     Data2D = df.values.tolist()
-
-    for i in range(len(Data2D)-1):
-        key = 'Cell_'+str(i+1)
-        CellX[key] = (Data2D[i][0]+Data2D[i+1][0])*0.5*0.3048
-        CellY[key] = (Data2D[i][1]+Data2D[i+1][1])*0.5*0.3048
-        if Foption ==1:
-            CellSize[key] = -1
-        else:
+    
+    if Foption == 2 or Foption == 3:
+        for i in range(len(Data2D)-1):
+            key = 'Cell_'+str(i+1)
+            CellX[key] = (Data2D[i][0]+Data2D[i+1][0])*0.5*0.3048
+            CellY[key] = (Data2D[i][1]+Data2D[i+1][1])*0.5*0.3048
             CellSize[key] = 0.3048*((Data2D[i][0]-Data2D[i+1][0])**2+(Data2D[i][1]-Data2D[i+1][1])**2)**0.5
-        CellUave[key] = (Data2D[i][2]+Data2D[i+1][2])*0.5*0.3048
-        CellDepth[key] = (Data2D[i][3]+Data2D[i+1][3])*0.5*0.3048
+            CellUave[key] = (Data2D[i][2]+Data2D[i+1][2])*0.5*0.3048
+            CellDepth[key] = (Data2D[i][3]+Data2D[i+1][3])*0.5*0.3048
+    elif Foption ==1:
+        for i in range(len(Data2D)-1):
+            key = 'Cell_'+str(i+1)
+            CellX[key] = Data2D[i][0]*0.3048
+            CellY[key] = Data2D[i][1]*0.3048
+            CellSize[key] = -1
+            CellUave[key] = Data2D[i][2]*0.3048
+            CellDepth[key] = Data2D[i][3]*0.3048
 
     return CellX,CellY,CellSize,CellUave,CellDepth
 
