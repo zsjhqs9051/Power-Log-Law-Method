@@ -40,7 +40,7 @@ content = ''
 # 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7
 # 3: Cross-Section: calculate 2.5D shear with modified m index from OpenFOAM 3D simulation
 # others: error
-Foption = 1
+Foption = 2
 if Foption == 1:
     content = 'Function Code 1: Surface Feild: calculate 2.5D shear for each SRH2D cell\n'
     Log.Log(logPath,content)
@@ -115,6 +115,7 @@ for file in os.listdir('2D-Info'):
     Log.Log(logPath,'Calculating 2.5D Shear Stress')
     CellWss = {}
     for key in CellX.keys():
+        print(key)
         Uave = CellUave[key]
         h = CellDepth[key]
         m = mfit[key]
@@ -136,17 +137,20 @@ for file in os.listdir('2D-Info'):
                         yss.append(y)
                 args  = {'ys':yss,'Uave':Uave,'h':h,'m':m,'ks':ks}
                 
-                if theta > 1.005*ks:
+                if theta > 1.01*ks:
+                    print('smooth')
                     res = minimize(UerrorS,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
-                elif theta > 0.995*ks:
+                elif theta > 0.99*ks:
                     bufferN = bufferN +1
                     resS = minimize(UerrorS,Utau0,args,method='SLSQP')
                     resR = minimize(UerrorR,Utau0,args,method='SLSQP')
                     UtauNew = (resS.x[0] + resR.x[0])*0.5
+                    print('buffer')
                 else:
                     res = minimize(UerrorR,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
+                    print('rough')
             
                 Err = np.abs(UtauNew - Utau0)
                 Utau0 = UtauNew
@@ -205,7 +209,12 @@ for file in os.listdir('2D-Info'):
     MinInd = int(np.floor(0.1 * len(T1)))
     MaxInd = int(np.ceil(0.9 * len(T1)))
     plt.figure(i)
-    plt.scatter(XX,YY,s=5,c=TT,cmap='jet',marker = "o", vmin = T1[MinInd], vmax = T1[MaxInd])
+    if Foption == 1:
+        ssize = 0.1
+    else:
+        ssize = 5
+    
+    plt.scatter(XX,YY,c=TT,s=ssize,cmap='jet',marker = "o", vmin = T1[MinInd], vmax = T1[MaxInd])
     cbar = plt.colorbar()
     cbar.set_label('2.5D Shear Stress (pa)')
     plt.axis("equal")
@@ -215,8 +224,11 @@ for file in os.listdir('2D-Info'):
     else:
         plt.xlabel('Distance (m)')
         plt.ylabel('Elevation (m)')
-    plt.title(CaseName+' '+'2.5D Shear Stress Distribution')
-    figName = CaseName +'-2.5D Shear Stress Distribution'
+    plt.title(CaseName+' '+'2.5D Shear Stress Distribution with fitted m index')
+    if Foption == 3:
+        figName = CaseName +'-2.5D Shear Stress Distribution with fitted m index'
+    else:
+        figName = CaseName +'-2.5D Shear Stress Distribution'
     figsave = figName + '.jpg'
     plt.savefig(figsave,dpi = 1024)
     i = i+1
