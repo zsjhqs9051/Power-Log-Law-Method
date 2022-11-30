@@ -40,7 +40,7 @@ content = ''
 # 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7
 # 3: Cross-Section: calculate 2.5D shear with modified m index from OpenFOAM 3D simulation
 # others: error
-Foption = 2
+Foption = 1
 if Foption == 1:
     content = 'Function Code 1: Surface Feild: calculate 2.5D shear for each SRH2D cell\n'
     Log.Log(logPath,content)
@@ -124,10 +124,11 @@ for file in os.listdir('2D-Info'):
         Err = 1
         ymin = 0
         ymax = 0.1*h
-        bufferN = 0
+        Iternumber = 0
         
         if m>0:
-            while (Err>1e-6) and (bufferN <= 5):
+            while (Err>1e-6) and (Iternumber <= 100):
+                Iternumber = Iternumber + 1
                 theta = 5*_const.viscosity/Utau0
                 yss = []
                 ys = np.linspace(ymin,ymax,100)
@@ -136,26 +137,37 @@ for file in os.listdir('2D-Info'):
                     if yplus >30 and yplus<1000:
                         yss.append(y)
                 args  = {'ys':yss,'Uave':Uave,'h':h,'m':m,'ks':ks}
-                
-                if theta > 1.01*ks:
-                    print('smooth')
+
+                # if theta > 1.01*ks:
+                #     print('smooth')
+                #     res = minimize(UerrorS,Utau0,args,method='SLSQP')
+                #     UtauNew = res.x[0]
+                # elif theta > 0.99*ks:
+                #     bufferN = bufferN +1
+                #     resS = minimize(UerrorS,Utau0,args,method='SLSQP')
+                #     resR = minimize(UerrorR,Utau0,args,method='SLSQP')
+                #     UtauNew = (resS.x[0] + resR.x[0])*0.5
+                #     print('buffer')
+                # else:
+                #     res = minimize(UerrorR,Utau0,args,method='SLSQP')
+                #     UtauNew = res.x[0]
+                #     print('rough')
+                    
+                if theta > ks:
                     res = minimize(UerrorS,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
-                elif theta > 0.99*ks:
-                    bufferN = bufferN +1
-                    resS = minimize(UerrorS,Utau0,args,method='SLSQP')
-                    resR = minimize(UerrorR,Utau0,args,method='SLSQP')
-                    UtauNew = (resS.x[0] + resR.x[0])*0.5
-                    print('buffer')
                 else:
                     res = minimize(UerrorR,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
-                    print('rough')
             
                 Err = np.abs(UtauNew - Utau0)
                 Utau0 = UtauNew
                 ymin = 30*_const.viscosity/Utau0
                 ymax = 1000*_const.viscosity/Utau0
+            if Iternumber > 100:
+                resS = minimize(UerrorS,Utau0,args,method='SLSQP')
+                resR = minimize(UerrorR,Utau0,args,method='SLSQP')
+                UtauNew = max(resS.x[0], resR.x[0])
         else:
             UtauNew = 0
             CellSize[key] = 0
@@ -174,7 +186,10 @@ for file in os.listdir('2D-Info'):
     Log.Log(logPath,'Calculate details are written to the txt file\n')
     
     #write results to txt file
-    FileSumamry = CaseName+'.txt'
+    if Foption == 3:
+        FileSumamry = CaseName+'-fittedM.txt'
+    else:
+        FileSumamry = CaseName+'.txt'
     if os.path.exists(FileSumamry):
         os.remove(FileSumamry)
     with open(FileSumamry,'a+') as f:
@@ -224,10 +239,12 @@ for file in os.listdir('2D-Info'):
     else:
         plt.xlabel('Distance (m)')
         plt.ylabel('Elevation (m)')
-    plt.title(CaseName+' '+'2.5D Shear Stress Distribution with fitted m index')
+    
     if Foption == 3:
+        plt.title(CaseName+' '+'2.5D Shear Stress Distribution with fitted m index')
         figName = CaseName +'-2.5D Shear Stress Distribution with fitted m index'
     else:
+        plt.title(CaseName+' '+'2.5D Shear Stress Distribution')
         figName = CaseName +'-2.5D Shear Stress Distribution'
     figsave = figName + '.jpg'
     plt.savefig(figsave,dpi = 1024)
