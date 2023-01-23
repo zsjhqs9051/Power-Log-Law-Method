@@ -26,9 +26,6 @@ WSE = 581.93
 # roughness height, meter
 ks = 0.2e-3
 
-# #initial guess Utau
-Utau0 = 0.05
-
 #log file
 Log = Log()
 logPath = 'Log.txt'
@@ -125,6 +122,7 @@ for file in os.listdir('2D-Info'):
         ymin = 0
         ymax = 0.1*h
         Iternumber = 0
+        Utau0 = _const.viscosity*1000/ymax
         
         if m>0:
             while (Err>1e-6) and (Iternumber <= 100):
