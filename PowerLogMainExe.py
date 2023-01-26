@@ -22,9 +22,12 @@ import matplotlib.pyplot as plt
 
 #Required InputInformation
 #water Surface Elevation, ft
-WSE = 581.93
+WSE = 0.15
 # roughness height, meter
-ks = 0.2e-3
+ks = 1.0e-3
+
+# #initial guess Utau
+#
 
 #log file
 Log = Log()
@@ -37,7 +40,7 @@ content = ''
 # 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7
 # 3: Cross-Section: calculate 2.5D shear with modified m index from OpenFOAM 3D simulation
 # others: error
-Foption = 1
+Foption = 2
 if Foption == 1:
     content = 'Function Code 1: Surface Feild: calculate 2.5D shear for each SRH2D cell\n'
     Log.Log(logPath,content)
@@ -69,6 +72,7 @@ for file in os.listdir('2D-Info'):
     CellSize = {}
     CellUave = {}
     CellDepth = {}
+
     
     if os.path.exists('2D-Info/'+FileName):
         Log.Log(logPath,'SRH2D Information Loaded')
@@ -112,7 +116,6 @@ for file in os.listdir('2D-Info'):
     Log.Log(logPath,'Calculating 2.5D Shear Stress')
     CellWss = {}
     for key in CellX.keys():
-        print(key)
         Uave = CellUave[key]
         h = CellDepth[key]
         m = mfit[key]
@@ -121,9 +124,8 @@ for file in os.listdir('2D-Info'):
         Err = 1
         ymin = 0
         ymax = 0.1*h
-        Iternumber = 0
         Utau0 = _const.viscosity*1000/ymax
-        
+        Iternumber = 0
         if m>0:
             while (Err>1e-6) and (Iternumber <= 100):
                 Iternumber = Iternumber + 1
@@ -135,22 +137,6 @@ for file in os.listdir('2D-Info'):
                     if yplus >30 and yplus<1000:
                         yss.append(y)
                 args  = {'ys':yss,'Uave':Uave,'h':h,'m':m,'ks':ks}
-
-                # if theta > 1.01*ks:
-                #     print('smooth')
-                #     res = minimize(UerrorS,Utau0,args,method='SLSQP')
-                #     UtauNew = res.x[0]
-                # elif theta > 0.99*ks:
-                #     bufferN = bufferN +1
-                #     resS = minimize(UerrorS,Utau0,args,method='SLSQP')
-                #     resR = minimize(UerrorR,Utau0,args,method='SLSQP')
-                #     UtauNew = (resS.x[0] + resR.x[0])*0.5
-                #     print('buffer')
-                # else:
-                #     res = minimize(UerrorR,Utau0,args,method='SLSQP')
-                #     UtauNew = res.x[0]
-                #     print('rough')
-                    
                 if theta > ks:
                     res = minimize(UerrorS,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
@@ -162,13 +148,16 @@ for file in os.listdir('2D-Info'):
                 Utau0 = UtauNew
                 ymin = 30*_const.viscosity/Utau0
                 ymax = 1000*_const.viscosity/Utau0
+                
             if Iternumber > 100:
                 resS = minimize(UerrorS,Utau0,args,method='SLSQP')
                 resR = minimize(UerrorR,Utau0,args,method='SLSQP')
                 UtauNew = max(resS.x[0], resR.x[0])
+            print(key,Iternumber,UtauNew)
         else:
             UtauNew = 0
             CellSize[key] = 0
+        
         CellWss[key] = _const.density*UtauNew**2
     Log.Log(logPath,'Calculation Finished!')
     
@@ -177,8 +166,9 @@ for file in os.listdir('2D-Info'):
         ShearForce = 0
         totalA = 0
         for key in CellSize.keys():
-            ShearForce = ShearForce + CellSize[key]*CellWss[key]
-            totalA = totalA + CellSize[key]
+            if not np.isnan(CellWss[key]):
+                ShearForce = ShearForce + CellSize[key]*CellWss[key]
+                totalA = totalA + CellSize[key]
         CellAverageTau=ShearForce/totalA
     
     Log.Log(logPath,'Calculate details are written to the txt file\n')
