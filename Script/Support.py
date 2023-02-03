@@ -49,14 +49,10 @@ def Info2DLoad(FileName):
     print(factor)
     
     Data2D = df.values.tolist()
-    col = 1
-    MaxY = float('-inf')
-    MinY = float('inf')
-    for row in Data2D:
-        MaxY = max(MaxY,row[col])
-        MinY = min(MinY,row[col])
-
-    if abs(MaxY - MinY)<=1e-3:
+    
+    Xvalue = [row[0] for row in Data2D]
+    setX = set(Xvalue)
+    if len(Xvalue) == len(setX):
         Foption = 2
     else:
         Foption = 1
