@@ -20,20 +20,15 @@ from Script.Support import _const,Log
 from Script.Support import *
 import matplotlib.pyplot as plt
 
-#Required InputInformation
-# roughness height, meter
+
 ks = 1.0e-3
+
 
 #log file
 Log = Log()
 logPath = 'Log.txt'
 Log.loginitial(logPath) 
 content = ''
-
-#Function Option Code
-# 1: Surface Feild:calculate 2.5D shear for each SRH2D cell
-# 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7
-
 
     
 #SRH2D information load
@@ -86,6 +81,7 @@ for file in os.listdir('2D-Info'):
         Err = 1
         ymin = 0
         ymax = 0.15*h
+
         Utau0 = _const.viscosity*1000/ymax
         Iternumber = 0
         if m>0:
@@ -115,6 +111,7 @@ for file in os.listdir('2D-Info'):
                 resS = minimize(UerrorS,Utau0,args,method='SLSQP')
                 resR = minimize(UerrorR,Utau0,args,method='SLSQP')
                 UtauNew = max(resS.x[0], resR.x[0])
+            print(key,Iternumber,UtauNew)
         else:
             UtauNew = 0
             CellSize[key] = 0
