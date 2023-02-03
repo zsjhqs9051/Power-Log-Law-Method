@@ -21,13 +21,8 @@ from Script.Support import *
 import matplotlib.pyplot as plt
 
 #Required InputInformation
-#water Surface Elevation, ft
-WSE = 581.93
 # roughness height, meter
-ks = 0.2e-3
-
-# #initial guess Utau
-Utau0 = 0.05
+ks = 1.0e-3
 
 #log file
 Log = Log()
@@ -38,21 +33,8 @@ content = ''
 #Function Option Code
 # 1: Surface Feild:calculate 2.5D shear for each SRH2D cell
 # 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7
-# 3: Cross-Section: calculate 2.5D shear with modified m index from OpenFOAM 3D simulation
-# others: error
-Foption = 1
-if Foption == 1:
-    content = 'Function Code 1: Surface Feild: calculate 2.5D shear for each SRH2D cell\n'
-    Log.Log(logPath,content)
-elif Foption == 2:
-    content = 'Function Code 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7\n'
-    Log.Log(logPath,content)
-elif Foption == 3:
-    content = 'Function Code 3: Cross-Section: calculate 2.5D shear with modified m index from OpenFOAM 3D simulation\n'
-    Log.Log(logPath,content)
-else:
-    Log.Log(logPath,'fatal error: Wrong Function Code!\n\tProgram Terminate')
-    sys.exit()
+
+
     
 #SRH2D information load
 #Data in English unit
@@ -72,10 +54,18 @@ for file in os.listdir('2D-Info'):
     CellSize = {}
     CellUave = {}
     CellDepth = {}
+
     
     if os.path.exists('2D-Info/'+FileName):
         Log.Log(logPath,'SRH2D Information Loaded')
-        CellX,CellY,CellSize,CellUave,CellDepth = Info2DLoad(FileName,Foption)
+        CellX,CellY,CellSize,CellUave,CellDepth,Foption = Info2DLoad(FileName)
+        if Foption == 1:
+            content = 'Function Code 1: Surface Feild: calculate 2.5D shear for each SRH2D cell\n'
+            Log.Log(logPath,content)
+        elif Foption == 2:
+            content = 'Function Code 2: Cross-Section: calculate 2.5D shear with fixed m index value, m=7\n'
+            Log.Log(logPath,content)
+
     else:
         Log.Log(logPath,'SRH2D Information does NOT exist!!!\nProgram Terminate')
         sys.exit()
@@ -83,49 +73,21 @@ for file in os.listdir('2D-Info'):
     #Function Code 3 additional requirement
     if os.path.exists('3D_CFD/U_Profiles'):
         shutil.rmtree('3D_CFD/U_Profiles')
-    if Foption == 3:
-        if len(os.listdir('3D_CFD/OF3DFile')) == 0:
-            Log.Log(logPath,'No 3D simulation files found!\nProgram Terminate')
-            sys.exit()
-        else:
-            mfit = {}
-            SampleU(CellX,WSE)
-            src = '3D_CFD/sampleDictU'
-            dst = '3D_CFD/OF3DFile/system/sampleDictU'
-            shutil.move(src,dst)
-            mother = os.getcwd()
-            os.chdir('3D_CFD/OF3DFile/')
-            #os.system( 'postProcess -func sampleDictU -latestTime' )
-            os.chdir(mother)
-            if os.path.exists('3D_CFD/OF3DFile/postProcessing/sampleDictU'):
-                for root,dirs,files in os.walk('3D_CFD/OF3DFile/postProcessing/sampleDictU'):
-                    for dirname in dirs:
-                        src = root + '/' + dirname
-                        dst = '3D_CFD/U_Profiles'
-                        shutil.copytree(src,dst)
-            else:
-                Log.Log(logPath,'3D CFD simulation velocity profiles are NOT exported successfully!\nProgram Terminate\n')
-                sys.exit()
-    
-    #Power law m index value
-    mfit = {}
-    mfit = mIndex(Foption,CellDepth,WSE)
-    
+
     #2.5D shear stress calculation
     Log.Log(logPath,'Calculating 2.5D Shear Stress')
     CellWss = {}
     for key in CellX.keys():
-        print(key)
         Uave = CellUave[key]
         h = CellDepth[key]
-        m = mfit[key]
+        m = 1.0/7.0
         Upower = []
         Ulog = []
         Err = 1
         ymin = 0
-        ymax = 0.1*h
+        ymax = 0.15*h
+        Utau0 = _const.viscosity*1000/ymax
         Iternumber = 0
-        
         if m>0:
             while (Err>1e-6) and (Iternumber <= 100):
                 Iternumber = Iternumber + 1
@@ -137,22 +99,6 @@ for file in os.listdir('2D-Info'):
                     if yplus >30 and yplus<1000:
                         yss.append(y)
                 args  = {'ys':yss,'Uave':Uave,'h':h,'m':m,'ks':ks}
-
-                # if theta > 1.01*ks:
-                #     print('smooth')
-                #     res = minimize(UerrorS,Utau0,args,method='SLSQP')
-                #     UtauNew = res.x[0]
-                # elif theta > 0.99*ks:
-                #     bufferN = bufferN +1
-                #     resS = minimize(UerrorS,Utau0,args,method='SLSQP')
-                #     resR = minimize(UerrorR,Utau0,args,method='SLSQP')
-                #     UtauNew = (resS.x[0] + resR.x[0])*0.5
-                #     print('buffer')
-                # else:
-                #     res = minimize(UerrorR,Utau0,args,method='SLSQP')
-                #     UtauNew = res.x[0]
-                #     print('rough')
-                    
                 if theta > ks:
                     res = minimize(UerrorS,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
@@ -164,6 +110,7 @@ for file in os.listdir('2D-Info'):
                 Utau0 = UtauNew
                 ymin = 30*_const.viscosity/Utau0
                 ymax = 1000*_const.viscosity/Utau0
+                
             if Iternumber > 100:
                 resS = minimize(UerrorS,Utau0,args,method='SLSQP')
                 resR = minimize(UerrorR,Utau0,args,method='SLSQP')
@@ -171,29 +118,29 @@ for file in os.listdir('2D-Info'):
         else:
             UtauNew = 0
             CellSize[key] = 0
+        
         CellWss[key] = _const.density*UtauNew**2
+        print(key,CellWss[key])
     Log.Log(logPath,'Calculation Finished!')
-    
+
     Log.Log(logPath,'Cell-weight 2.5D shear stress on the Cross-Section done!')
-    if Foption == 2 or Foption ==3:
+    if Foption == 2:
         ShearForce = 0
         totalA = 0
         for key in CellSize.keys():
-            ShearForce = ShearForce + CellSize[key]*CellWss[key]
-            totalA = totalA + CellSize[key]
+            if not np.isnan(CellWss[key]):
+                ShearForce = ShearForce + CellSize[key]*CellWss[key]
+                totalA = totalA + CellSize[key]
         CellAverageTau=ShearForce/totalA
     
     Log.Log(logPath,'Calculate details are written to the txt file\n')
     
     #write results to txt file
-    if Foption == 3:
-        FileSumamry = CaseName+'-fittedM.txt'
-    else:
-        FileSumamry = CaseName+'.txt'
+    FileSumamry = CaseName+'.txt'
     if os.path.exists(FileSumamry):
         os.remove(FileSumamry)
     with open(FileSumamry,'a+') as f:
-        if Foption == 2 or Foption ==3: 
+        if Foption == 2: 
             content1 = '2.5D Tau=\t' + str(CellAverageTau) +'\t(Pa)\n'
             content2 = 'Cell\tCoordinate_1(m)\tCoordinate_2(m)\tCell Size(m)\tUave(m/s)\tDepth(m)\tm-index\tTau(Pa)\n'
             content = content1 +content2
@@ -203,13 +150,12 @@ for file in os.listdir('2D-Info'):
     
     for key in CellX.keys():
         datacell = ''
-        if mfit[key] > 0:
-            if Foption == 2 or Foption ==3: 
-                datacell = key+'\t'+str(CellX[key])+'\t'+str(CellY[key])+'\t'+str(CellSize[key])+'\t'+str(CellUave[key])+'\t'\
-                +str(CellDepth[key])+'\t' +str(1/mfit[key])+'\t'+str(CellWss[key])+'\n'
-            elif Foption == 1:
-                datacell = key+'\t'+str(CellX[key])+'\t'+str(CellY[key])+'\t'+str(CellUave[key])+'\t'\
-                +str(CellDepth[key])+'\t' +str(1/mfit[key])+'\t'+str(CellWss[key])+'\n'
+        if Foption == 2: 
+            datacell = key+'\t'+str(CellX[key])+'\t'+str(CellY[key])+'\t'+str(CellSize[key])+'\t'+str(CellUave[key])+'\t'\
+            +str(CellDepth[key])+'\t' +str(1/7)+'\t'+str(CellWss[key])+'\n'
+        elif Foption == 1:
+            datacell = key+'\t'+str(CellX[key])+'\t'+str(CellY[key])+'\t'+str(CellUave[key])+'\t'\
+            +str(CellDepth[key])+'\t' +str(1/7)+'\t'+str(CellWss[key])+'\n'
         with open(FileSumamry,'a+') as f:
             f.write (datacell)
     #2.5D shear stress distribution
@@ -239,13 +185,9 @@ for file in os.listdir('2D-Info'):
     else:
         plt.xlabel('Distance (m)')
         plt.ylabel('Elevation (m)')
-    
-    if Foption == 3:
-        plt.title(CaseName+' '+'2.5D Shear Stress Distribution with fitted m index')
-        figName = CaseName +'-2.5D Shear Stress Distribution with fitted m index'
-    else:
-        plt.title(CaseName+' '+'2.5D Shear Stress Distribution')
-        figName = CaseName +'-2.5D Shear Stress Distribution'
+
+    plt.title(CaseName+' '+'2.5D Shear Stress Distribution')
+    figName = CaseName +'-2.5D Shear Stress Distribution'
     figsave = figName + '.jpg'
     plt.savefig(figsave,dpi = 1024)
     i = i+1
