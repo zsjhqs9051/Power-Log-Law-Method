@@ -21,7 +21,7 @@ from Script.Support import *
 import matplotlib.pyplot as plt
 
 #input the roughness height, unit is in meter
-ks = 1.0e-3 #meter
+ks = 2.3e-3 #meter
 
 #log file
 Log = Log()
