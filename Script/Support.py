@@ -59,20 +59,22 @@ def Info2DLoad(FileName):
         
     if Foption == 2:
         for i in range(len(Data2D)-1):
-            key = 'Cell_'+str(i+1)
-            CellX[key] = (Data2D[i][0]+Data2D[i+1][0])*0.5*factor
-            CellY[key] = (Data2D[i][1]+Data2D[i+1][1])*0.5*factor
-            CellSize[key] = factor*((Data2D[i][0]-Data2D[i+1][0])**2+(Data2D[i][1]-Data2D[i+1][1])**2)**0.5
-            CellUave[key] = (Data2D[i][2]+Data2D[i+1][2])*0.5*factor
-            CellDepth[key] = (Data2D[i][3]+Data2D[i+1][3])*0.5*factor
+            if Data2D[i][3] > 0:
+                key = 'Cell_'+str(i+1)
+                CellX[key] = (Data2D[i][0]+Data2D[i+1][0])*0.5*factor
+                CellY[key] = (Data2D[i][1]+Data2D[i+1][1])*0.5*factor
+                CellSize[key] = factor*((Data2D[i][0]-Data2D[i+1][0])**2+(Data2D[i][1]-Data2D[i+1][1])**2)**0.5
+                CellUave[key] = (Data2D[i][2]+Data2D[i+1][2])*0.5*factor
+                CellDepth[key] = (Data2D[i][3]+Data2D[i+1][3])*0.5*factor
     elif Foption ==1:
         for i in range(len(Data2D)-1):
-            key = 'Cell_'+str(i+1)
-            CellX[key] = Data2D[i][0]*factor
-            CellY[key] = Data2D[i][1]*factor
-            CellSize[key] = -1
-            CellUave[key] = Data2D[i][2]*factor
-            CellDepth[key] = Data2D[i][3]*factor
+            if Data2D[i][3] > 0:
+                key = 'Cell_'+str(i+1)
+                CellX[key] = Data2D[i][0]*factor
+                CellY[key] = Data2D[i][1]*factor
+                CellSize[key] = -1
+                CellUave[key] = Data2D[i][2]*factor
+                CellDepth[key] = Data2D[i][3]*factor
 
     return CellX,CellY,CellSize,CellUave,CellDepth,Foption
 
