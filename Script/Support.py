@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 from scipy import optimize
 
+import time
+
 class Log():
     def __init__(self):
         pass
@@ -45,27 +47,31 @@ def Info2DLoad(FileName):
         factor = 0.3048
     else:
         factor = 1
-        
-    print(factor)
     
     Data2D = df.values.tolist()
-    
-    Xvalue = [row[0] for row in Data2D]
-    setX = set(Xvalue)
-    if len(Xvalue) == len(setX):
+    Xvalue = []
+    Xvalues = [row[1] for row in Data2D]
+    dataType = all(Xvalues[i]<=Xvalues[i+1] for i in range(len(Xvalues)-1))
+    print(dataType)
+    if dataType:
         Foption = 2
     else:
         Foption = 1
+    
         
+    print('Function = ',Foption)
+    print('factor = ',factor)
+    
     if Foption == 2:
         for i in range(len(Data2D)-1):
             if Data2D[i][3] > 0:
-                key = 'Cell_'+str(i+1)
-                CellX[key] = (Data2D[i][0]+Data2D[i+1][0])*0.5*factor
-                CellY[key] = (Data2D[i][1]+Data2D[i+1][1])*0.5*factor
-                CellSize[key] = factor*((Data2D[i][0]-Data2D[i+1][0])**2+(Data2D[i][1]-Data2D[i+1][1])**2)**0.5
-                CellUave[key] = (Data2D[i][2]+Data2D[i+1][2])*0.5*factor
-                CellDepth[key] = (Data2D[i][3]+Data2D[i+1][3])*0.5*factor
+                if ((Data2D[i][2]+Data2D[i+1][2])*0.5*factor)>1e-4:
+                    key = 'Cell_'+str(i+1)
+                    CellX[key] = (Data2D[i][0]+Data2D[i+1][0])*0.5*factor
+                    CellY[key] = (Data2D[i][1]+Data2D[i+1][1])*0.5*factor
+                    CellSize[key] = factor*((Data2D[i][0]-Data2D[i+1][0])**2+(Data2D[i][1]-Data2D[i+1][1])**2)**0.5
+                    CellUave[key] = (Data2D[i][2]+Data2D[i+1][2])*0.5*factor
+                    CellDepth[key] = (Data2D[i][3]+Data2D[i+1][3])*0.5*factor
     elif Foption ==1:
         for i in range(len(Data2D)-1):
             if Data2D[i][3] > 0:
@@ -86,7 +92,6 @@ def UerrorS(Utau,args):
     m = args ['m']
     ks = args ['ks']
     Uerror = []
-    Umax = Uave/((0.4)**m)
     for y in ys:
         yplus = yPluslog(y,Utau)
         Upower = PowerU(m,Uave,h,y)
@@ -102,7 +107,6 @@ def UerrorR(Utau,args):
     m = args ['m']
     ks = args ['ks']
     Uerror = []
-    Umax = Uave/((0.4)**m)
     for y in ys:
         yplus = yPluslog(y,Utau)
         Upower = PowerU(m,Uave,h,y)

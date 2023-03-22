@@ -21,7 +21,9 @@ from Script.Support import *
 import matplotlib.pyplot as plt
 
 #input the roughness height, unit is in meter
-ks = 2.3e-3 #meter
+d50 = 1e-3 #meter
+ks = 2*d50
+
 
 #log file
 Log = Log()
@@ -86,7 +88,7 @@ for file in os.listdir('2D-Info'):
                 Iternumber = Iternumber + 1
                 theta = 5*_const.viscosity/Utau0
                 yss = []
-                ys = np.linspace(ymin,ymax,100)
+                ys = np.linspace(ymin,ymax,50)
                 for y in ys:
                     yplus=yPluslog(y,Utau0)
                     if yplus >30 and yplus<1000:
@@ -95,19 +97,28 @@ for file in os.listdir('2D-Info'):
                 if theta > ks:
                     res = minimize(UerrorS,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
+                    Err = np.abs(UtauNew - Utau0)
+                    Utau0 = UtauNew
+                    ymin = 30*_const.viscosity/Utau0
+                    ymax = 1000*_const.viscosity/Utau0
+                    print('smooth')
                 else:
                     res = minimize(UerrorR,Utau0,args,method='SLSQP')
                     UtauNew = res.x[0]
-            
-                Err = np.abs(UtauNew - Utau0)
-                Utau0 = UtauNew
-                ymin = 30*_const.viscosity/Utau0
-                ymax = 1000*_const.viscosity/Utau0
-                
+                    Err = np.abs(UtauNew - Utau0)
+                    Utau0 = UtauNew
+                    ymin = ks#30*_const.viscosity/Utau0
+                    ymax = 0.15*h#1000*_const.viscosity/Utau0
+                    print('rough')
             if Iternumber > 100:
                 resS = minimize(UerrorS,Utau0,args,method='SLSQP')
                 resR = minimize(UerrorR,Utau0,args,method='SLSQP')
                 UtauNew = max(resS.x[0], resR.x[0])
+                Err = np.abs(UtauNew - Utau0)
+                Utau0 = UtauNew
+                ymin = ks#30*_const.viscosity/Utau0
+                ymax = 0.15*h#1000*_const.viscosity/Utau0
+                print('hybrid')
             print(key,Iternumber,UtauNew)
         else:
             UtauNew = 0
@@ -135,20 +146,22 @@ for file in os.listdir('2D-Info'):
     with open(FileSumamry,'a+') as f:
         if Foption == 2: 
             content1 = '2.5D Tau=\t' + str(CellAverageTau) +'\t(Pa)\n'
+            content3 = 'Roughness Height ks = \t'+str(ks)+'\tm\n'
             content2 = 'Cell\tCoordinate_1(m)\tCoordinate_2(m)\tCell Size(m)\tUave(m/s)\tDepth(m)\tm-index\tTau(Pa)\n'
-            content = content1 +content2
+            content = content1 +content3 +content2
         elif Foption == 1:
-            content = 'Cell\tCoordinate_1(m)\tCoordinate_2(m)\tUave(m/s)\tDepth(m)\tm-index\tTau(Pa)\n'
+            content3 = 'Roughness Height ks = \t'+str(ks)+'\tm\n'
+            content =content3+ 'Cell\tCoordinate_1(m)\tCoordinate_2(m)\tUave(m/s)\tDepth(m)\tm-index\tTau(Pa)\n'
         f.write (content)
     
     for key in CellX.keys():
         datacell = ''
         if Foption == 2: 
             datacell = key+'\t'+str(CellX[key])+'\t'+str(CellY[key])+'\t'+str(CellSize[key])+'\t'+str(CellUave[key])+'\t'\
-            +str(CellDepth[key])+'\t' +str(1/7)+'\t'+str(CellWss[key])+'\n'
+            +str(CellDepth[key])+'\t' +str(7)+'\t'+str(CellWss[key])+'\n'
         elif Foption == 1:
             datacell = key+'\t'+str(CellX[key])+'\t'+str(CellY[key])+'\t'+str(CellUave[key])+'\t'\
-            +str(CellDepth[key])+'\t' +str(1/7)+'\t'+str(CellWss[key])+'\n'
+            +str(CellDepth[key])+'\t' +str(7)+'\t'+str(CellWss[key])+'\n'
         with open(FileSumamry,'a+') as f:
             f.write (datacell)
     #2.5D shear stress distribution
